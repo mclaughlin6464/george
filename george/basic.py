@@ -55,15 +55,21 @@ class BasicSolver(object):
         :param x: ``(nsamples, ndim)``
             The independent coordinates of the data points.
 
-        :param yerr: (optional) ``(nsamples,)`` or scalar
+        :param yerr: (optional) ``(nsamples, nsamples)``, ``(nsamples,)`` or scalar
             The Gaussian uncertainties on the data points at coordinates
             ``x``. These values will be added in quadrature to the diagonal of
             the covariance matrix.
 
+            #Sean McLaughlin
+            If ``(nsamples,nsamples)`` is the covariance matrix of each set of data points at
+            coordinates ``x``. Added to the covariance matrix NOT in quadrature.
         """
         # Compute the kernel matrix.
         K = self.kernel.value(x)
-        K[np.diag_indices_from(K)] += yerr ** 2
+        if len(yerr.shape) == 1:
+            K[np.diag_indices_from(K)] += yerr ** 2
+        else: #square matrix
+            K+=yerr
 
         # Factor the matrix and compute the log-determinant.
         self._factor = (cholesky(K, overwrite_a=True, lower=False), False)

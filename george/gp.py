@@ -136,9 +136,9 @@ class GP(object):
     def _check_dimensions(self, y):
         n, ndim = self._x.shape
         y = np.atleast_1d(y)
-        if len(y.shape) > 1:
-            raise ValueError("The predicted dimension must be 1-D")
-        if len(y) != n:
+        if len(y.shape) > 2:
+            raise ValueError("The predicted dimension must be 1-D or 2-D")
+        if any(sidelength != n for sidelength in y.shape):
             raise ValueError("Dimension mismatch")
         return y
 
@@ -158,10 +158,14 @@ class GP(object):
         :param x: ``(nsamples,)`` or ``(nsamples, ndim)``
             The independent coordinates of the data points.
 
-        :param yerr: (optional) ``(nsamples,)`` or scalar
+        :param yerr: (optional) ``(nsamples, nsamples)``, ``(nsamples,)`` or scalar
             The Gaussian uncertainties on the data points at coordinates
             ``x``. These values will be added in quadrature to the diagonal of
             the covariance matrix.
+
+            #Sean McLaughlin
+            If ``(nsamples,nsamples)`` is the covariance matrix of each set of data points at
+            coordinates ``x``. Added to the covariance matrix NOT in quadrature.
 
         :param sort: (optional)
             Should the samples be sorted before computing the covariance
@@ -176,8 +180,16 @@ class GP(object):
         self._x = np.ascontiguousarray(self._x, dtype=np.float64)
         try:
             self._yerr = float(yerr) * np.ones(len(x))
-        except TypeError:
+        except TypeError: #is not a scalar
+
             self._yerr = self._check_dimensions(yerr)[self.inds]
+
+            if len(self._yerr.shape) == 1:
+                self._yerr = self._yerr[self.inds]
+            else:
+                self._yerr = self._yerr[self.inds, :][:,self.inds]
+
+
         self._yerr = np.ascontiguousarray(self._yerr, dtype=np.float64)
 
         # Set up and pre-compute the solver.
@@ -377,10 +389,14 @@ class GP(object):
         :param y: ``(nsamples, )``
             The observations at the coordinates ``x``.
 
-        :param yerr: (optional) ``(nsamples,)`` or scalar
+        :param yerr: (optional) ``(nsamples, nsamples)``, ``(nsamples,)`` or scalar
             The Gaussian uncertainties on the data points at coordinates
             ``x``. These values will be added in quadrature to the diagonal of
             the covariance matrix.
+
+            #Sean McLaughlin
+            If ``(nsamples,nsamples)`` is the covariance matrix of each set of data points at
+            coordinates ``x``. Added to the covariance matrix NOT in quadrature.
 
         :param sort: (optional)
             Should the samples be sorted before computing the covariance
